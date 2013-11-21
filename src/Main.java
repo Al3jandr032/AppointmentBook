@@ -22,26 +22,35 @@ public class Main {
         Connection connection = database.connect();
 
         // test retrieval of patient from database
-        Patient patient = new Patient(connection, 4);
-        System.out.println(patient.getZipcode());
+        Patient patient = new Patient(connection);
+        patient.get(4);
+        System.out.println(patient.getFirstName());
+
+        // test update of patient
+        patient.setFirstName("Ethan");
+        patient.update();
 
         // test creation of new patient into database
-        Patient newPatient = new Patient(connection,
-                123, "Chad", "Burke", "x", "Gilford", "NH", "03249",
+        Patient newPatient = new Patient(connection);
+        newPatient.create(123, "Chad", "Burke", "x", "Gilford", "NH", "03249",
                 "555-555-5555", "555-555-5555", "x@gmail.com");
         System.out.println(newPatient.getPatientId());
 
-        // test of import csv method
-        Importer importer = new Importer();
-        importer.importCsv("d");
+        // does database exist?
+        // if not : create it
+        // if !AppointmentBook.exists
+        // AppointmentBook.createDatabase
 
-        // check to see if the database exists and that it has data in it
-        if(!AppointmentBook.exists()) {
-            // if data does not exist then ask if they want to import a csv
-            importer.displayPrompt();
-        }
+        // does patients table contain data?
+        // if not : prompt for csv import
+        // if !PatientsTable.hasData
+        // Importer importer = new Importer();
+        // importer.displayPrompt();
 
-        // load AllPatients form
-        AllPatients allPatients = new AllPatients();
+        // AllPatients will accept a 'Connection' object as a parameter
+        AllPatients allPatients = new AllPatients(connection);
+
+        // PatientDetail will accept a 'Patient' object as a parameter
+        PatientDetail patientDetail = new PatientDetail(patient);
     }
 }

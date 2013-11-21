@@ -1,26 +1,40 @@
 package GUI;
 
+import com.intellij.uiDesigner.core.GridConstraints;
+import com.intellij.uiDesigner.core.GridLayoutManager;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 
 public class AllPatients {
 
     private JTable table1;
     private JPanel mainPanel;
     private JScrollPane scrollPane;
-    private JTextField textField1;
+    private JTextField searchBox;
     private JButton searchButton;
     static JFrame frame = new JFrame("All Patients");
+    private Connection connection;
 
-    public AllPatients() {
+    private DefaultTableModel tableModel = new DefaultTableModel();
 
+    public AllPatients(Connection connection) {
+        this.connection = connection;
         // table1.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
         // set dynamic columns
-        DefaultTableModel tableModel = new DefaultTableModel();
+
         tableModel.addColumn("First Name");
         tableModel.addColumn("Last Name");
         tableModel.addColumn("City");
@@ -28,11 +42,9 @@ public class AllPatients {
         tableModel.addColumn("Phone");
         tableModel.addColumn("Email Address");
         table1.setModel(tableModel);
-
+        populatePatients();
         // add rows to table
-        tableModel.addRow(new Object[]{"Chad", "Burke", "Gilford", "NH", "555-555-5555", "x@gmail.com"});
-        tableModel.addRow(new Object[]{"Chad2", "Burke", "Gilford", "NH", "555-555-5555", "x@gmail.com"});
-        tableModel.addRow(new Object[]{"Chad3", "Burke", "Gilford", "NH", "555-555-5555", "x@gmail.com"});
+
 
         // style cell renderer .. add some padding
         DefaultTableCellRenderer r = new DefaultTableCellRenderer() {
@@ -71,6 +83,51 @@ public class AllPatients {
         frame.pack();
         frame.setVisible(true);
 
+        searchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                populatePatients();
+            }
+        });
+        searchBox.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyReleased(KeyEvent e) {
+                super.keyReleased(e);
+                populatePatients();
+            }
+        });
+    }
+
+    private void populatePatients() {
+        String search = searchBox.getText().trim();
+        PreparedStatement statement = null;
+        for (int i = tableModel.getRowCount() - 1; i > -1; i--) {
+            tableModel.removeRow(i);
+        }
+        try {
+            String query = "select * from AppointmentBook.dbo.patients " +
+                    "where firstName like '%" + search + "%'" +
+                    "or lastName like '%" + search + "%'" +
+                    "or homePhone like '%" + search + "%'" +
+                    "or cellPhone like '%" + search + "%'" +
+                    "or  emailAddress like '%" + search + "%'";
+            statement = connection.prepareStatement(query);
+
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                tableModel.addRow(new Object[]{
+                        resultSet.getString("firstName"),
+                        resultSet.getString("lastName"),
+                        resultSet.getString("city"),
+                        resultSet.getString("state"),
+                        resultSet.getString("homePhone"),
+                        resultSet.getString("emailAddress")});
+
+
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     {
@@ -108,7 +165,7 @@ public class AllPatients {
         table1.setRowMargin(4);
         scrollPane.setViewportView(table1);
         final JPanel panel1 = new JPanel();
-        panel1.setLayout(new com.intellij.uiDesigner.core.GridLayoutManager(1, 3, new Insets(3, 3, 3, 3), -1, -1));
+        panel1.setLayout(new GridLayoutManager(1, 3, new Insets(3, 3, 3, 3), -1, -1));
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -116,14 +173,14 @@ public class AllPatients {
         gbc.fill = GridBagConstraints.BOTH;
         mainPanel.add(panel1, gbc);
         panel1.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), null));
-        textField1 = new JTextField();
-        panel1.add(textField1, new com.intellij.uiDesigner.core.GridConstraints(0, 1, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_WANT_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
+        searchBox = new JTextField();
+        panel1.add(searchBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
         final JLabel label1 = new JLabel();
         label1.setText("Search by name, phone, email :");
-        panel1.add(label1, new com.intellij.uiDesigner.core.GridConstraints(0, 0, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_WEST, com.intellij.uiDesigner.core.GridConstraints.FILL_NONE, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel1.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         searchButton = new JButton();
         searchButton.setText("Search");
-        panel1.add(searchButton, new com.intellij.uiDesigner.core.GridConstraints(0, 2, 1, 1, com.intellij.uiDesigner.core.GridConstraints.ANCHOR_CENTER, com.intellij.uiDesigner.core.GridConstraints.FILL_HORIZONTAL, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_SHRINK | com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_CAN_GROW, com.intellij.uiDesigner.core.GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        panel1.add(searchButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
