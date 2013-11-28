@@ -1,17 +1,15 @@
 package GUI;
 
-import com.intellij.uiDesigner.core.GridConstraints;
-import com.intellij.uiDesigner.core.GridLayoutManager;
+import Model.Patient;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -19,37 +17,37 @@ import java.sql.SQLException;
 
 public class AllPatients {
 
-    private JTable table1;
+    private JTable tblPatients;
     private JPanel mainPanel;
     private JScrollPane scrollPane;
     private JTextField searchBox;
-    private JButton searchButton;
+    private JButton addPButton;
     static JFrame frame = new JFrame("All Patients");
-    private Connection connection;
+    final private Connection connection;
 
-    private DefaultTableModel tableModel = new DefaultTableModel();
+    private DefaultTableModel tblPatientsModel = new DefaultTableModel();
 
-    public AllPatients(Connection connection) {
+    public AllPatients(final Connection connection) {
         this.connection = connection;
-        // table1.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
 
-        // set dynamic columns
-
-        tableModel.addColumn("First Name");
-        tableModel.addColumn("Last Name");
-        tableModel.addColumn("City");
-        tableModel.addColumn("State");
-        tableModel.addColumn("Phone");
-        tableModel.addColumn("Email Address");
-        table1.setModel(tableModel);
+        tblPatientsModel.addColumn("First Name");
+        tblPatientsModel.addColumn("Last Name");
+        tblPatientsModel.addColumn("City");
+        tblPatientsModel.addColumn("State");
+        tblPatientsModel.addColumn("Phone");
+        tblPatientsModel.addColumn("Email Address");
+        tblPatientsModel.addColumn("Next Appointment");
+        tblPatientsModel.addColumn("Appointment Description");
+        tblPatientsModel.addColumn("Patient ID");
+        tblPatients.setModel(tblPatientsModel);
         populatePatients();
-        // add rows to table
 
+        // a little hodge .. remove the patients id column after populating it .. we don't want it in the view
+        tblPatients.removeColumn(tblPatients.getColumnModel().getColumn(8));
 
         // style cell renderer .. add some padding
         DefaultTableCellRenderer r = new DefaultTableCellRenderer() {
             Border padding = BorderFactory.createEmptyBorder(5, 5, 5, 5);
-
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -58,24 +56,18 @@ public class AllPatients {
             }
         };
 
-        table1.getColumnModel().getColumn(0).setCellRenderer(r);
-        table1.getColumnModel().getColumn(1).setCellRenderer(r);
-
-        // hide the editor border
-        JTextField tf = new JTextField();
-        tf.setBorder(BorderFactory.createEmptyBorder());
-        tf.setBorder(BorderFactory.createCompoundBorder(tf.getBorder(), BorderFactory.createEmptyBorder(5, 5, 5, 5)));
-        table1.setDefaultEditor(Object.class, new DefaultCellEditor(tf));
+        tblPatients.getColumnModel().getColumn(0).setCellRenderer(r);
+        tblPatients.getColumnModel().getColumn(1).setCellRenderer(r);
 
         // set row height
-        table1.setRowHeight(table1.getRowHeight() + 8);
-        table1.setRowMargin(3);
+        tblPatients.setRowHeight(tblPatients.getRowHeight() + 8);
+        tblPatients.setRowMargin(3);
 
         // set selection color
-        table1.setSelectionBackground(new Color(Integer.parseInt("A1CDEC", 16)));
+        tblPatients.setSelectionBackground(new Color(Integer.parseInt("A1CDEC", 16)));
 
         // allow sorting
-        table1.setAutoCreateRowSorter(true);
+        tblPatients.setAutoCreateRowSorter(true);
 
         // open ui
         frame.setContentPane(mainPanel);
@@ -83,12 +75,14 @@ public class AllPatients {
         frame.pack();
         frame.setVisible(true);
 
-        searchButton.addActionListener(new ActionListener() {
+        addPButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                populatePatients();
+            Patient patient = new Patient(connection);
+            PatientDetail patientDetail = new PatientDetail(connection, patient);
             }
         });
+
         searchBox.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -96,16 +90,44 @@ public class AllPatients {
                 populatePatients();
             }
         });
+
+        tblPatients.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                super.mouseClicked(e);
+                int selectedRow = tblPatients.getSelectedRow();
+                int patientId = Integer.parseInt(tblPatientsModel.getValueAt(selectedRow, 8).toString());
+                Patient patient = new Patient(connection);
+                patient.get(patientId);
+                PatientDetail patientDetail = new PatientDetail(connection, patient);
+            }
+        });
     }
 
     private void populatePatients() {
         String search = searchBox.getText().trim();
         PreparedStatement statement = null;
-        for (int i = tableModel.getRowCount() - 1; i > -1; i--) {
-            tableModel.removeRow(i);
+        for (int i = tblPatientsModel.getRowCount() - 1; i > -1; i--) {
+            tblPatientsModel.removeRow(i);
         }
         try {
-            String query = "select * from AppointmentBook.dbo.patients " +
+            String query = "select patients.*, appointments.appointmentDateTime, appointments.appointmentDescription\n" +
+                    "from patients \n" +
+                    "left outer join (\n" +
+                    "select * from (\n" +
+                    "    select\n" +
+                    "        t.patientId,\n" +
+                    "        t.appointmentDateTime,\n" +
+                    "        t.appointmentDescription,\n" +
+                    "        t.appointmentId,\n" +
+                    "        row_number() over(partition by t.patientId order by t.appointmentDateTime asc) as rn\n" +
+                    "    from\n" +
+                    "        appointments t\n" +
+                    "\twhere t.appointmentDateTime > CURRENT_TIMESTAMP\n" +
+                    ") tt\n" +
+                    "where tt.rn = 1\n" +
+                    ") as appointments\n" +
+                    "on patients.patientId = appointments.appointmentId " +
                     "where firstName like '%" + search + "%'" +
                     "or lastName like '%" + search + "%'" +
                     "or homePhone like '%" + search + "%'" +
@@ -115,78 +137,21 @@ public class AllPatients {
 
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
-                tableModel.addRow(new Object[]{
+                tblPatientsModel.addRow(new Object[]{
                         resultSet.getString("firstName"),
                         resultSet.getString("lastName"),
                         resultSet.getString("city"),
                         resultSet.getString("state"),
                         resultSet.getString("homePhone"),
-                        resultSet.getString("emailAddress")});
-
-
+                        resultSet.getString("emailAddress"),
+                        resultSet.getString("appointmentDateTime"),
+                        resultSet.getString("appointmentDescription"),
+                        resultSet.getString("patientId")
+                });
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    {
-// GUI initializer generated by IntelliJ IDEA GUI Designer
-// >>> IMPORTANT!! <<<
-// DO NOT EDIT OR ADD ANY CODE HERE!
-        $$$setupUI$$$();
-    }
-
-    /**
-     * Method generated by IntelliJ IDEA GUI Designer
-     * >>> IMPORTANT!! <<<
-     * DO NOT edit this method OR call it in your code!
-     *
-     * @noinspection ALL
-     */
-    private void $$$setupUI$$$() {
-        mainPanel = new JPanel();
-        mainPanel.setLayout(new GridBagLayout());
-        mainPanel.setMinimumSize(new Dimension(650, 76));
-        mainPanel.setPreferredSize(new Dimension(750, 469));
-        scrollPane = new JScrollPane();
-        GridBagConstraints gbc;
-        gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.weightx = 1.0;
-        gbc.weighty = 1.0;
-        gbc.fill = GridBagConstraints.BOTH;
-        mainPanel.add(scrollPane, gbc);
-        scrollPane.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), null));
-        table1 = new JTable();
-        table1.setFillsViewportHeight(true);
-        table1.setIntercellSpacing(new Dimension(4, 4));
-        table1.setRowMargin(4);
-        scrollPane.setViewportView(table1);
-        final JPanel panel1 = new JPanel();
-        panel1.setLayout(new GridLayoutManager(1, 3, new Insets(3, 3, 3, 3), -1, -1));
-        gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.weightx = 1.0;
-        gbc.fill = GridBagConstraints.BOTH;
-        mainPanel.add(panel1, gbc);
-        panel1.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), null));
-        searchBox = new JTextField();
-        panel1.add(searchBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
-        final JLabel label1 = new JLabel();
-        label1.setText("Search by name, phone, email :");
-        panel1.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        searchButton = new JButton();
-        searchButton.setText("Search");
-        panel1.add(searchButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-    }
-
-    /**
-     * @noinspection ALL
-     */
-    public JComponent $$$getRootComponent$$$() {
-        return mainPanel;
-    }
 }

@@ -17,7 +17,7 @@ public class Patient {
     public void get(int patientId) {
         PreparedStatement statement = null;
         try {
-            String query = "select * from AppointmentBook.dbo.patients where patientId = ?";
+            String query = "select * from patients where patientId = ?";
             statement = connection.prepareStatement(query);
             statement.setInt(1, patientId);
             ResultSet resultSet = statement.executeQuery();
@@ -28,7 +28,7 @@ public class Patient {
             setMrn(resultSet.getInt("MRN"));
             setFirstName(resultSet.getString("firstName"));
             setLastName(resultSet.getString("lastName"));
-            setAddress(resultSet.getString("streetAddress"));
+            setAddress(resultSet.getString("address"));
             setCity(resultSet.getString("city"));
             setState(resultSet.getString("state"));
             setZipcode(resultSet.getString("zipcode"));
@@ -66,7 +66,7 @@ public class Patient {
         try {
             PreparedStatement statement = null;
             String sql = "update patients " +
-                    "set MRN = ?, firstName = ?, lastName = ?, streetAddress = ?, " +
+                    "set MRN = ?, firstName = ?, lastName = ?, address = ?, " +
                     "city = ?, state = ?, zipcode = ?, homePhone = ?, cellPhone = ?, emailAddress = ? " +
                     "where patientId = ?";
             statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
@@ -91,7 +91,7 @@ public class Patient {
         PreparedStatement statement = null;
         try {
             String sql = "INSERT INTO patients" +
-                    "([MRN],[firstName],[lastName],[streetAddress],[city],[state],[zipcode],[homePhone],[cellPhone],[emailAddress])" +
+                    "([MRN],[firstName],[lastName],[address],[city],[state],[zipcode],[homePhone],[cellPhone],[emailAddress])" +
                     "VALUES(?,?,?,?,?,?,?,?,?,?)";
             statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             statement.setInt(1, getMrn());

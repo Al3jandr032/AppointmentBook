@@ -18,17 +18,8 @@ public class Main {
         setLookAndFeel();
 
         // connect to database when application is first launched
-        Database database = new Database("jdbc:sqlserver://localhost:1433;instanceName=sqlexpress", "user", "pass");
+        Database database = new Database("jdbc:sqlserver://plc245:1433;instanceName=sqlexpress", "user", "pass");
         Connection connection = database.connect();
-
-        // test retrieval of patient from database
-        Patient patient = new Patient(connection);
-        patient.get(4);
-        System.out.println(patient.getFirstName());
-
-        // test update of patient
-        patient.setFirstName("Ethan");
-        patient.update();
 
         // test creation of new patient into database
         Patient newPatient = new Patient(connection);
@@ -48,9 +39,16 @@ public class Main {
         // importer.displayPrompt();
 
         // AllPatients will accept a 'Connection' object as a parameter
-        AllPatients allPatients = new AllPatients(connection);
+        // AllPatients allPatients = new AllPatients(connection);
+
+        // test retrieval of patient from database
+        Patient patient = new Patient(connection);
+        patient.get(5);
+        System.out.println(patient.getFirstName());
+        patient.setFirstName("Ethan");
+        patient.update();
 
         // PatientDetail will accept a 'Patient' object as a parameter
-        PatientDetail patientDetail = new PatientDetail(patient);
+        PatientDetail patientDetail = new PatientDetail(connection, patient);
     }
 }

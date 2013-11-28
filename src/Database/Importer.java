@@ -45,7 +45,7 @@ public class Importer {
                 String[] arr = line.split(",");
                 String sql = String.format("" +
                         "insert into AppointmentBook.dbo.patients " +
-                        "(firstName, lastName, streetAddress, city, state, zipcode)" +
+                        "(firstName, lastName, address, city, state, zipcode)" +
                         "values('%s','%s','%s','%s','%s','%s');", arr[0],arr[1],arr[2],arr[3],arr[4],arr[5]);
                 System.out.println(sql);
             }
