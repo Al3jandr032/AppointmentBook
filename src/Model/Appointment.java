@@ -4,7 +4,7 @@ import java.sql.*;
 
 public class Appointment {
 
-    private int appointmentId, patientID;
+    private int appointmentId, patientId;
     private String appointmentDateTime, appointmentDescription;
     private Connection connection;
 
@@ -23,6 +23,7 @@ public class Appointment {
 
     // get from database
     public void get(int appointmentId) {
+        this.setAppointmentId(appointmentId);
         PreparedStatement statement = null;
         try {
             String query = "select * from appointments where appointmentId = ?";
@@ -41,8 +42,8 @@ public class Appointment {
     }
 
     // insert into database
-    public void create(int appointmentId, String appointmentDateTime, String description) {
-        this.appointmentId = appointmentId;
+    public void create(int patientId, String appointmentDateTime, String description) {
+        this.patientId = patientId;
         this.appointmentDateTime = appointmentDateTime;
         this.appointmentDescription = description;
         this.insert();
@@ -82,24 +83,39 @@ public class Appointment {
             // get identity value
             ResultSet generatedKeys = statement.getGeneratedKeys();
             if (generatedKeys.next()) {
-                appointmentId = generatedKeys.getInt(1);
+                this.appointmentId = generatedKeys.getInt(1);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    private void delete() {
-
+    public void delete() {
+        if(getAppointmentId() == -1) {
+            throw new IllegalArgumentException("Trying to delete with no appointmentId.");
+        }
+        try {
+            PreparedStatement statement = null;
+            String sql = "delete from appointments where appointmentId = ?";
+            statement = connection.prepareStatement(sql);
+            statement.setInt(1, getAppointmentId());
+            statement.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public int getPatientId() {
-        return patientID;
+        return patientId;
     }
 
     // don't allow outside access to patientId
     private void setPatientId(int patientID) {
-        this.patientID = patientID;
+        this.patientId = patientID;
+    }
+
+    public void setAppointmentId(int appointmentId) {
+        this.appointmentId = appointmentId;
     }
 
     public int getAppointmentId() {

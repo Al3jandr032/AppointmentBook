@@ -1,9 +1,13 @@
 package GUI;
 
+import Database.Importer;
 import Model.Patient;
+import com.intellij.uiDesigner.core.GridConstraints;
+import com.intellij.uiDesigner.core.GridLayoutManager;
 
 import javax.swing.*;
 import javax.swing.border.Border;
+import javax.swing.border.EmptyBorder;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -22,13 +26,17 @@ public class AllPatients {
     private JScrollPane scrollPane;
     private JTextField searchBox;
     private JButton addPButton;
+    private JButton btnImport;
     static JFrame frame = new JFrame("All Patients");
     final private Connection connection;
 
     private DefaultTableModel tblPatientsModel = new DefaultTableModel();
 
+    private AllPatients allPatients;
+
     public AllPatients(final Connection connection) {
         this.connection = connection;
+        this.allPatients = this;
 
         tblPatientsModel.addColumn("First Name");
         tblPatientsModel.addColumn("Last Name");
@@ -48,6 +56,7 @@ public class AllPatients {
         // style cell renderer .. add some padding
         DefaultTableCellRenderer r = new DefaultTableCellRenderer() {
             Border padding = BorderFactory.createEmptyBorder(5, 5, 5, 5);
+
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
@@ -70,6 +79,8 @@ public class AllPatients {
         tblPatients.setAutoCreateRowSorter(true);
 
         // open ui
+        mainPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+        mainPanel.setPreferredSize(new Dimension(1000, 400));
         frame.setContentPane(mainPanel);
         frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         frame.pack();
@@ -78,8 +89,8 @@ public class AllPatients {
         addPButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-            Patient patient = new Patient(connection);
-            PatientDetail patientDetail = new PatientDetail(connection, patient);
+                Patient patient = new Patient(connection);
+                PatientDetail patientDetail = new PatientDetail(connection, allPatients, patient);
             }
         });
 
@@ -99,19 +110,55 @@ public class AllPatients {
                 int patientId = Integer.parseInt(tblPatientsModel.getValueAt(selectedRow, 8).toString());
                 Patient patient = new Patient(connection);
                 patient.get(patientId);
-                PatientDetail patientDetail = new PatientDetail(connection, patient);
+                PatientDetail patientDetail = new PatientDetail(connection, allPatients, patient);
+            }
+        });
+        btnImport.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Importer importer = new Importer(connection);
+                if (importer.displayPrompt()) {
+                    populatePatients();
+                }
             }
         });
     }
 
-    private void populatePatients() {
+    public void populatePatients() {
         String search = searchBox.getText().trim();
         PreparedStatement statement = null;
         for (int i = tblPatientsModel.getRowCount() - 1; i > -1; i--) {
             tblPatientsModel.removeRow(i);
         }
         try {
-            String query = "select patients.*, appointments.appointmentDateTime, appointments.appointmentDescription\n" +
+            String sql = "select patients.*, \n" +
+                    "convert(varchar, nearest_appointment_info.appointmentDateTime, 100) as appointmentDateTime, \n" +
+                    "nearest_appointment_info.appointmentDescription\n" +
+                    "from patients\n" +
+                    "\n" +
+                    "/* join to find the nearest appointment date */\n" +
+                    "left outer join (\n" +
+                    "\tselect patientId, min(appointmentDateTime) as appointmentDateTime\n" +
+                    "\tfrom appointments\n" +
+                    "\twhere appointmentDateTime > CURRENT_TIMESTAMP\n" +
+                    "\tgroup by patientId\n" +
+                    ") as nearest_appointment\n" +
+                    "on patients.patientId = nearest_appointment.patientId\n" +
+                    "\n" +
+                    "/* join to find the nearest actual appointment */\n" +
+                    "left outer join appointments as nearest_appointment_info\n" +
+                    "on patients.patientId = nearest_appointment_info.patientId\n" +
+                    "and nearest_appointment_info.appointmentDateTime = nearest_appointment.appointmentDateTime " +
+
+                    "where patients.firstName like '%" + search + "%'" +
+                    "or lastName like '%" + search + "%'" +
+                    "or homePhone like '%" + search + "%'" +
+                    "or cellPhone like '%" + search + "%'" +
+                    "or emailAddress like '%" + search + "%'" +
+                    "or nearest_appointment_info.appointmentDescription like '%" + search + "%'" +
+                    " order by DATEDIFF(DAY, nearest_appointment_info.appointmentDateTime, CURRENT_TIMESTAMP) desc, nearest_appointment_info.appointmentDateTime asc";
+
+            /* String sql = "select patients.*, convert(varchar, appointments.appointmentDateTime, 100) as appointmentDateTime, appointments.appointmentDescription\n" +
                     "from patients \n" +
                     "left outer join (\n" +
                     "select * from (\n" +
@@ -132,8 +179,9 @@ public class AllPatients {
                     "or lastName like '%" + search + "%'" +
                     "or homePhone like '%" + search + "%'" +
                     "or cellPhone like '%" + search + "%'" +
-                    "or  emailAddress like '%" + search + "%'";
-            statement = connection.prepareStatement(query);
+                    "or  emailAddress like '%" + search + "%'" +
+                    " order by DATEDIFF(DAY, appointmentDateTime, CURRENT_TIMESTAMP) desc";     */
+            statement = connection.prepareStatement(sql);
 
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
@@ -154,4 +202,70 @@ public class AllPatients {
         }
     }
 
+    {
+// GUI initializer generated by IntelliJ IDEA GUI Designer
+// >>> IMPORTANT!! <<<
+// DO NOT EDIT OR ADD ANY CODE HERE!
+        $$$setupUI$$$();
+    }
+
+    /**
+     * Method generated by IntelliJ IDEA GUI Designer
+     * >>> IMPORTANT!! <<<
+     * DO NOT edit this method OR call it in your code!
+     *
+     * @noinspection ALL
+     */
+    private void $$$setupUI$$$() {
+        mainPanel = new JPanel();
+        mainPanel.setLayout(new GridBagLayout());
+        mainPanel.setMinimumSize(new Dimension(650, 76));
+        mainPanel.setPreferredSize(new Dimension(750, 469));
+        scrollPane = new JScrollPane();
+        GridBagConstraints gbc;
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 1;
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        mainPanel.add(scrollPane, gbc);
+        scrollPane.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), null));
+        tblPatients = new JTable();
+        tblPatients.setFillsViewportHeight(true);
+        tblPatients.setIntercellSpacing(new Dimension(4, 4));
+        tblPatients.setRowMargin(4);
+        scrollPane.setViewportView(tblPatients);
+        final JPanel panel1 = new JPanel();
+        panel1.setLayout(new GridLayoutManager(1, 3, new Insets(3, 3, 3, 3), -1, -1));
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
+        mainPanel.add(panel1, gbc);
+        panel1.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), null));
+        searchBox = new JTextField();
+        panel1.add(searchBox, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
+        final JLabel label1 = new JLabel();
+        label1.setText("Search by name, phone, email :");
+        panel1.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        addPButton = new JButton();
+        addPButton.setText("Add Patient");
+        panel1.add(addPButton, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        btnImport = new JButton();
+        btnImport.setText("Import from CSV");
+        gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        mainPanel.add(btnImport, gbc);
+    }
+
+    /**
+     * @noinspection ALL
+     */
+    public JComponent $$$getRootComponent$$$() {
+        return mainPanel;
+    }
 }

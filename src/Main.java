@@ -22,24 +22,26 @@ public class Main {
         Connection connection = database.connect();
 
         // test creation of new patient into database
-        Patient newPatient = new Patient(connection);
+        /* Patient newPatient = new Patient(connection);
         newPatient.create(123, "Chad", "Burke", "x", "Gilford", "NH", "03249",
                 "555-555-5555", "555-555-5555", "x@gmail.com");
-        System.out.println(newPatient.getPatientId());
+        System.out.println(newPatient.getPatientId()); */
 
         // does database exist?
         // if not : create it
         // if !AppointmentBook.exists
         // AppointmentBook.createDatabase
 
+
+
         // does patients table contain data?
         // if not : prompt for csv import
         // if !PatientsTable.hasData
-        // Importer importer = new Importer();
-        // importer.displayPrompt();
+        // Importer importer = new Importer(connection);
+        // importer.importCsv("d");
 
         // AllPatients will accept a 'Connection' object as a parameter
-        // AllPatients allPatients = new AllPatients(connection);
+        AllPatients allPatients = new AllPatients(connection);
 
         // test retrieval of patient from database
         Patient patient = new Patient(connection);
@@ -49,6 +51,6 @@ public class Main {
         patient.update();
 
         // PatientDetail will accept a 'Patient' object as a parameter
-        PatientDetail patientDetail = new PatientDetail(connection, patient);
+        // PatientDetail patientDetail = new PatientDetail(connection, patient);
     }
 }

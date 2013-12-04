@@ -42,19 +42,7 @@ public class Patient {
     }
 
     // insert into database
-    public void create(int mrn, String firstName,
-                       String lastName, String address, String city, String state, String zipcode,
-                       String homePhone, String cellPhone, String emailAddress) {
-        this.mrn = mrn;
-        this.zipcode = zipcode;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.address = address;
-        this.city = city;
-        this.state = state;
-        this.homePhone = homePhone;
-        this.cellPhone = cellPhone;
-        this.emailAddress = emailAddress;
+    public void create() {
         this.insert();
     }
 
@@ -115,8 +103,24 @@ public class Patient {
         }
     }
 
-    private void delete() {
+    public void delete() {
+        if(getPatientId() == -1) {
+            throw new IllegalArgumentException("Trying to delete with no patientId.");
+        }
+        try {
+            PreparedStatement statement = null;
+            String sql = "delete from appointments where patientId = ?";
+            statement = connection.prepareStatement(sql);
+            statement.setInt(1, getPatientId());
+            statement.execute();
 
+            sql = "delete from patients where patientId = ?";
+            statement = connection.prepareStatement(sql);
+            statement.setInt(1, getPatientId());
+            statement.execute();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public int getPatientId() {
